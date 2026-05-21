@@ -1,5 +1,5 @@
 const express = require("express");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const dotenv = require("dotenv");
 dotenv.config();
@@ -31,11 +31,31 @@ async function run() {
     });
  
     app.get("/rooms", async (req, res) => {
-      const rooms = await roomCollection.find().toArray();
-      res.send(rooms);
+      const result = await roomCollection.find().toArray();
+      res.send(result);
     });
 
+    app.get("/rooms/:id", async (req, res) => {
+      const {id} = req.params;
+      const result = await roomCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
+    app.patch("/rooms/:id", async (req, res) => {
+      const {id} = req.params;
+      const updateData = req.body;
+      const result = await roomCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateData }
+      );
+      res.send(result);
+    });
+
+    app.delete("/rooms/:id", async (req, res) => {
+      const {id} = req.params;
+      const result = await roomCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
