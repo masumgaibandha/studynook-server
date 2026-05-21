@@ -5,8 +5,8 @@ const dotenv = require("dotenv");
 dotenv.config();
 const cors = require("cors");
 const uri =process.env.MONGODB_URI;
-// app.use(cors());
-// app.use(express.json());
+app.use(cors());
+app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 const client = new MongoClient(uri, {
@@ -19,16 +19,31 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    // Send a ping to confirm a successful connection
+    const db = client.db("studynook");
+    const roomCollection = db.collection("rooms");
+
+    app.post("/rooms", async (req, res) => {
+      const roomData = req.body;
+      const result = await roomCollection.insertOne(roomData);
+      res.send(result);
+      console.log(result)
+    });
+ 
+    app.get("/rooms", async (req, res) => {
+      const rooms = await roomCollection.find().toArray();
+      res.send(rooms);
+    });
+
+
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
