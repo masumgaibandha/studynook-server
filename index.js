@@ -4,7 +4,7 @@ const app = express();
 const dotenv = require("dotenv");
 dotenv.config();
 const cors = require("cors");
-const uri =process.env.MONGODB_URI;
+const uri = process.env.MONGODB_URI;
 app.use(cors());
 app.use(express.json());
 
@@ -22,38 +22,97 @@ async function run() {
     await client.connect();
     const db = client.db("studynook");
     const roomCollection = db.collection("rooms");
+    const bookingCollection = db.collection("bookings");
 
     app.post("/rooms", async (req, res) => {
       const roomData = req.body;
       const result = await roomCollection.insertOne(roomData);
       res.send(result);
-      console.log(result)
+      console.log(result);
     });
- 
+
     app.get("/rooms", async (req, res) => {
       const result = await roomCollection.find().toArray();
       res.send(result);
     });
 
     app.get("/rooms/:id", async (req, res) => {
-      const {id} = req.params;
+      const { id } = req.params;
       const result = await roomCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
     app.patch("/rooms/:id", async (req, res) => {
-      const {id} = req.params;
+      const { id } = req.params;
       const updateData = req.body;
       const result = await roomCollection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: updateData }
+        { $set: updateData },
       );
       res.send(result);
     });
 
     app.delete("/rooms/:id", async (req, res) => {
-      const {id} = req.params;
+      const { id } = req.params;
       const result = await roomCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    app.get("/bookings/:userId", async (req, res) => {
+      const { userId } = req.params;
+      const result = await bookingCollection.find({ userId }).toArray();
+      res.send(result);
+    });
+
+    app.post("/bookings", async (req, res) => {
+      const bookingData = req.body;
+
+      const { roomId, date, startTime, endTime } = bookingData;
+
+      const newStart = Number(startTime.split(":")[0]);
+      const newEnd = Number(endTime.split(":")[0]);
+
+      const existingBookings = await bookingCollection
+        .find({
+          roomId,
+          date,
+          status: "confirmed",
+        })
+        .toArray();
+
+      const conflict = existingBookings.find((booking) => {
+        const existingStart = Number(booking.startTime.split(":")[0]);
+        const existingEnd = Number(booking.endTime.split(":")[0]);
+
+        return newStart < existingEnd && newEnd > existingStart;
+      });
+
+      if (conflict) {
+        return res.status(409).send({
+          success: false,
+          message: "This room is already booked for this time slot",
+        });
+      }
+
+      const result = await bookingCollection.insertOne({
+        ...bookingData,
+        totalCost: Number(bookingData.totalCost),
+        status: "confirmed",
+        createdAt: new Date(),
+      });
+
+      res.send({
+        success: true,
+        message: "Room booked successfully",
+        result,
+      });
+    });
+
+    app.delete("/bookings/:bookingId", async (req, res) => {
+      const { bookingId } = req.params;
+      const result = await bookingCollection.deleteOne({
+        _id: new ObjectId(bookingId),
+      });
       res.send(result);
     });
 
