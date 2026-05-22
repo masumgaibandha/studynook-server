@@ -72,7 +72,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/rooms/:id", async (req, res) => {
+    app.delete("/rooms/:id", tokenVerify, async (req, res) => {
       const { id } = req.params;
       const result = await roomCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
@@ -84,7 +84,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/bookings", async (req, res) => {
+    app.post("/bookings", tokenVerify, async (req, res) => {
       const bookingData = req.body;
 
       const { roomId, date, startTime, endTime } = bookingData;
