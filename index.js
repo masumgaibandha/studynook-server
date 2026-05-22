@@ -1,13 +1,17 @@
+// Masum Billah
+// Gaibandha
 const express = require("express");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const dotenv = require("dotenv");
 dotenv.config();
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const uri = process.env.MONGODB_URI;
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 const PORT = process.env.PORT || 5000;
 const client = new MongoClient(uri, {
@@ -52,11 +56,35 @@ async function run() {
     });
 
     app.get("/rooms", async (req, res) => {
-      const result = await roomCollection.find().toArray();
+      const { limit, search, amenity } = req.query;
+
+      const query = {};
+
+      if (search) {
+        query.roomName = {
+          $regex: search,
+          $options: "i",
+        };
+      }
+
+      if (amenity) {
+        query.amenities = {
+          $in: [amenity],
+        };
+      }
+
+      let cursor = roomCollection.find(query).sort({ _id: -1 });
+
+      if (limit) {
+        cursor = cursor.limit(parseInt(limit));
+      }
+
+      const result = await cursor.toArray();
+
       res.send(result);
     });
 
-    app.get("/rooms/:id", tokenVerify, async (req, res) => {
+    app.get("/rooms/:id", async (req, res) => {
       const { id } = req.params;
       const result = await roomCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
@@ -120,6 +148,14 @@ async function run() {
         status: "confirmed",
         createdAt: new Date(),
       });
+      await roomCollection.updateOne(
+        { _id: new ObjectId(roomId) },
+        {
+          $inc: {
+            bookingCount: 1,
+          },
+        },
+      );
 
       res.send({
         success: true,
@@ -128,11 +164,18 @@ async function run() {
       });
     });
 
-    app.delete("/bookings/:bookingId", async (req, res) => {
+    app.patch("/bookings/:bookingId/cancel", async (req, res) => {
       const { bookingId } = req.params;
-      const result = await bookingCollection.deleteOne({
-        _id: new ObjectId(bookingId),
-      });
+
+      const result = await bookingCollection.updateOne(
+        { _id: new ObjectId(bookingId) },
+        {
+          $set: {
+            status: "cancelled",
+          },
+        },
+      );
+
       res.send(result);
     });
 
