@@ -34,7 +34,7 @@ const tokenVerify = async (req, res, next) => {
   }
   try {
     const { payload } = await jwtVerify(token, JWKS);
-    console.log(payload);
+
     next();
   } catch (error) {
     return res.status(403).send({ message: "Forbidden" });
@@ -48,11 +48,10 @@ async function run() {
     const roomCollection = db.collection("rooms");
     const bookingCollection = db.collection("bookings");
 
-    app.post("/rooms", async (req, res) => {
+    app.post("/rooms", tokenVerify, async (req, res) => {
       const roomData = req.body;
       const result = await roomCollection.insertOne(roomData);
       res.send(result);
-      console.log(result);
     });
 
     app.get("/rooms", async (req, res) => {
@@ -90,7 +89,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/rooms/:id", async (req, res) => {
+    app.patch("/rooms/:id", tokenVerify, async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
       const result = await roomCollection.updateOne(
@@ -164,7 +163,7 @@ async function run() {
       });
     });
 
-    app.patch("/bookings/:bookingId/cancel", async (req, res) => {
+    app.patch("/bookings/:bookingId/cancel", tokenVerify, async (req, res) => {
       const { bookingId } = req.params;
 
       const result = await bookingCollection.updateOne(
