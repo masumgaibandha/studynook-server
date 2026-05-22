@@ -4,6 +4,7 @@ const app = express();
 const dotenv = require("dotenv");
 dotenv.config();
 const cors = require("cors");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const uri = process.env.MONGODB_URI;
 app.use(cors());
 app.use(express.json());
@@ -16,6 +17,25 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+const JWKS = createRemoteJWKSet(new URL("http://localhost:3000/api/auth/jwks"));
+
+const tokenVerify = async (req, res, next) => {
+  const authHeader = req?.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    console.log(payload);
+    next();
+  } catch (error) {
+    return res.status(403).send({ message: "Forbidden" });
+  }
+};
 
 async function run() {
   try {
@@ -36,7 +56,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/rooms/:id", async (req, res) => {
+    app.get("/rooms/:id", tokenVerify, async (req, res) => {
       const { id } = req.params;
       const result = await roomCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
