@@ -9,7 +9,12 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const uri = process.env.MONGODB_URI;
-app.use(cors());
+app.use(
+  cors({
+    origin: ["https://studynook-omega.vercel.app", "http://localhost:3000"],
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -21,8 +26,9 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
-const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`));
-
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
 
 const tokenVerify = async (req, res, next) => {
   const authHeader = req?.headers.authorization;
